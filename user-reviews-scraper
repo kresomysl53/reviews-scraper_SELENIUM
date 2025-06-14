@@ -1,0 +1,261 @@
+# Author: kresomys53
+
+#!/usr/bin/env python3
+
+import chromedriver_autoinstaller
+from selenium import webdriver
+from selenium.webdriver.common.by import By
+from selenium.webdriver.chrome.options import Options
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.support import expected_conditions as EC
+
+from bs4 import BeautifulSoup
+import json
+
+import time
+
+class DriverManager():
+    def __init__(self, driver_path=None):
+        self.driver_path = driver_path
+
+    def setup(self):
+        """Sets up the Chrome WebDriver."""
+        chromedriver_autoinstaller.install()
+
+        options = Options()
+        options.binary_location = "/usr/bin/chromium"
+        options.add_argument("--disable-gpu")
+        options.add_argument("--no-sandbox")
+        options.add_argument("--disable-dev-shm-usage")
+
+        self.driver = webdriver.Chrome(options=options)
+        self.wait = WebDriverWait(self.driver, timeout=5)
+        print("WebDriver initialized successfully.")
+
+        return self.driver, self.wait
+    
+
+class WebScraper():
+    def __init__(self, driver, wait):
+        self.driver = driver
+        self.wait = wait
+
+        self.selectors = {
+            'accept_cookies'    : 'button[data-testid="accept-button"]',
+            'see_more_btn'      : 'span.ipc-see-more.cWgjyQ',
+            'spoiler_btn'       : 'button[aria-label="Expand Spoiler"]',
+            'review_articles'   : 'article.user-review-item',
+            'review_title'      : 'h3.ipc-title__text.ipc-title__text--reduced',
+            'review_text'       : 'div.ipc-html-content-inner-div, role.presentation',
+            'review_rating'     : 'span.ipc-rating-star--rating',
+            'reviewer_name'     : 'a.ipc-link ipc-link--base, [data-testid="author-link"]',
+            'review_date'       : 'li.ipc-inline-list__item.review-date',
+            'helpful_votes'     : 'span.ipc-voting__label__count.ipc-voting__label__count--up',
+            'negative_votes'    : 'span.ipc-voting__label__count.ipc-voting__label__count--down',
+            'movie_title'       : 'h2.sc-5fe8a312-10, h1[data-testid="hero-title-block__title"]'
+        }
+
+    def get_movie_title(self):
+        """Extracts the movie title from the page."""
+        try:
+            title_element = self.driver.find_element(By.CSS_SELECTOR, self.selectors['movie_title'])
+            return title_element.text.strip()
+        except Exception as e:
+            print(f"[WARN] Failed to get movie title: {e}")
+            return "Unknown_Movie"
+
+    def load_page(self, url):
+        """Loads the specified URL in the WebDriver."""
+        self.driver.get(url)
+
+
+    def accept_cookies(self):
+        """Accepts cookies if the button is present."""
+        try:
+            self.driver.execute_script("window.scrollTo(0, 50)") 
+            accept_cookies = self.wait.until(EC.element_to_be_clickable((By.CSS_SELECTOR, self.selectors['accept_cookies'])))
+            accept_cookies.click()
+        except:
+            pass
+
+
+    def click_see_more(self):
+        """Clicks the 'See more' button to load additional reviews."""
+        try:
+            see_more = self.wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, self.selectors['see_more_btn'])))
+            self.driver.execute_script("arguments[0].scrollIntoView(true);", see_more)
+            time.sleep(0.25)
+            self.wait.until(EC.element_to_be_clickable((see_more)))
+            see_more.click()
+            time.sleep(1)
+            print("'See more' button clicked.")
+
+        except:
+            pass
+            
+
+    def load_all_reviews(self):
+        """Infinite scrolls to load all reviews."""
+        print("Loading all reviews...")
+        last_height = self.driver.execute_script("return document.body.scrollHeight+45")
+        
+        while True:
+            # Scroll down to bottom
+            self.driver.execute_script("window.scrollTo(0, document.body.scrollHeight+40);")
+            
+            try:
+                # Wait for new content to load
+                time.sleep(0.3)
+                self.wait.until(lambda d: d.execute_script("return document.body.scrollHeight") > last_height)
+                last_height = self.driver.execute_script("return document.body.scrollHeight")
+            except:
+                break
+        print("All reviews loaded.")
+
+
+    def click_spoiler_buttons(self):
+        """Clicks on 'Spoiler' buttons to reveal the spoiler text."""
+        self.driver.execute_script("window.scrollTo(0, 0)")
+        spoiler_buttons = self.driver.find_elements(By.CSS_SELECTOR, self.selectors['spoiler_btn'])
+        
+        print(f"Found {len(spoiler_buttons)} spoiler buttons.")
+        for i, button in enumerate(spoiler_buttons):
+            self.driver.execute_script("arguments[0].scrollIntoView(true);", button)
+            time.sleep(0.25)
+            try:
+                button.click()
+                time.sleep(0.1)
+            except:
+                print(f"Could not click spoiler button {i+1}")
+    
+
+    def export_reviews_to_dict(self):
+        """Creates a dictionary of selectors for the WebScraper."""
+        print("Extracting reviews...")
+        page_source = self.driver.page_source
+
+        soup = BeautifulSoup(page_source, "html.parser")
+        articles = soup.select(self.selectors['review_articles'])
+
+        print(f"Found {len(articles)} review articles.")
+        reviews = []
+        
+        for article in articles:
+            title = article.select_one(self.selectors['review_title']).get_text(strip=True)
+            text = article.select_one(self.selectors['review_text'])
+            text = text.get_text(strip=True) if text else "No review text available"
+            rating = article.select_one(self.selectors['review_rating'])
+            rating = int(rating.get_text(strip=True)) if rating else None
+            reviewer_name = article.select_one(self.selectors['reviewer_name']).get_text(strip=True) if article.select_one(self.selectors['reviewer_name']) else "Anonymous"
+            review_date = article.select_one(self.selectors['review_date']).get_text(strip=True) if article.select_one(self.selectors['review_date']) else "No date available"
+            helpful_votes = article.select_one(self.selectors['helpful_votes']).get_text(strip=True) if article.select_one(self.selectors['helpful_votes']) else "0"
+            negative_votes = article.select_one(self.selectors['negative_votes']).get_text(strip=True) if article.select_one(self.selectors['negative_votes']) else "0"
+
+            reviews.append({
+                'title': title,
+                'text': text,
+                'rating': rating,
+                'reviewer_name': reviewer_name,
+                'review_date': review_date,
+                'helpful_votes': helpful_votes,
+                'negative_votes': negative_votes
+            })
+
+        print(f"Successfully extracted {len(reviews)} reviews.")
+        return reviews
+    
+    def close_driver(self):
+        """Safely closes the WebDriver."""
+        if self.driver:
+            self.driver.quit()
+            print("WebDriver closed.")
+
+
+class DataConverter():
+    """Converts reviews from dict to other formats (JSON, CSV, etc.)."""
+    def __init__(self, reviews, title):
+        self.reviews = reviews
+        self.title = title
+
+    def to_json(self, filename):
+        """Saves reviews to a JSON file."""
+        try:
+            with open(filename, "w", encoding="utf-8") as f:
+                json.dump(self.reviews, f, ensure_ascii=False, indent=2)
+            print(f"Reviews saved to {filename}")
+        except Exception as e:
+            print(f"Error saving JSON: {e}")
+
+    def to_csv(self, filename):
+        """Saves reviews to a CSV file."""
+        try:
+            import csv
+            with open(filename, "w", newline='', encoding="utf-8") as f:
+                if self.reviews:  # Kontrola, že reviews nejsou prázdné
+                    writer = csv.writer(f)
+                    writer.writerow(self.reviews[0].keys())
+                    for review in self.reviews:
+                        writer.writerow(review.values())
+            print(f"Reviews saved to {filename}")
+        except Exception as e:
+            print(f"Error saving CSV: {e}")
+
+    def to_xml(self, filename):
+        """Saves reviews to an XML file."""
+        try:
+            import xml.etree.ElementTree as ET
+            root = ET.Element("reviews")
+            
+            for review in self.reviews:
+                review_elem = ET.SubElement(root, "review")
+                for key, value in review.items():
+                    child = ET.SubElement(review_elem, key)
+                    child.text = str(value) if value is not None else ""
+            
+            tree = ET.ElementTree(root)
+            tree.write(filename, encoding="utf-8", xml_declaration=True)
+            print(f"Reviews saved to {filename}")
+        except Exception as e:
+            print(f"Error saving XML: {e}")
+
+
+
+if __name__ == "__main__":
+    site = "https://www.imdb.com/title/tt20214908/reviews/?ref_=ttrt_sa_3"
+
+    # Initialize WebDriver
+    web_driver = DriverManager()
+    driver, wait = web_driver.setup()
+
+    scraper = WebScraper(driver, wait)
+
+    try:
+        scraper.load_page(site)
+        movie_title = scraper.get_movie_title()
+        print(f"Scraping reviews for: {movie_title}")
+
+        scraper.accept_cookies()
+        scraper.click_see_more()
+        scraper.load_all_reviews()
+        scraper.click_spoiler_buttons()
+        reviews = scraper.export_reviews_to_dict()
+        movie_title = scraper.get_movie_title()
+
+         # Check if reviews were found
+
+        if reviews:
+            # Convert and save reviews
+            converter = DataConverter(reviews, movie_title)
+            converter.to_json(f"{movie_title}.json")
+            converter.to_csv(f"{movie_title}.csv")
+            converter.to_xml(f"{movie_title}.xml")
+            print(f"✅ Successfully scraped {len(reviews)} reviews for '{movie_title}'")
+        else:
+            print("❌ No reviews found!")
+
+    except Exception as e:
+        print(f"❌ Error during scraping: {e}")
+    finally:
+        scraper.close_driver()
+
+
