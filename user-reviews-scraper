@@ -1,17 +1,10 @@
 # Author: kresomys53
+# License: View LICENSE file in the root directory of this project.
 
 #!/usr/bin/env python3
 
-import chromedriver_autoinstaller
-from selenium import webdriver
-from selenium.webdriver.common.by import By
-from selenium.webdriver.chrome.options import Options
-from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
-
-from bs4 import BeautifulSoup
-import json
-
+from selenium.webdriver.common.by import By
 import time
 
 class DriverManager():
@@ -20,6 +13,11 @@ class DriverManager():
 
     def setup(self):
         """Sets up the Chrome WebDriver."""
+        import chromedriver_autoinstaller
+        from selenium import webdriver
+        from selenium.webdriver.chrome.options import Options
+        from selenium.webdriver.support.ui import WebDriverWait
+
         chromedriver_autoinstaller.install()
 
         options = Options()
@@ -52,7 +50,7 @@ class WebScraper():
             'review_date'       : 'li.ipc-inline-list__item.review-date',
             'helpful_votes'     : 'span.ipc-voting__label__count.ipc-voting__label__count--up',
             'negative_votes'    : 'span.ipc-voting__label__count.ipc-voting__label__count--down',
-            'movie_title'       : 'h2.sc-5fe8a312-10, h1[data-testid="hero-title-block__title"]'
+            'movie_title'       : 'h1[data-testid="hero-title-block__title"]'
         }
 
     def get_movie_title(self):
@@ -131,6 +129,7 @@ class WebScraper():
 
     def export_reviews_to_dict(self):
         """Creates a dictionary of selectors for the WebScraper."""
+        from bs4 import BeautifulSoup
         print("Extracting reviews...")
         page_source = self.driver.page_source
 
@@ -179,6 +178,7 @@ class DataConverter():
 
     def to_json(self, filename):
         """Saves reviews to a JSON file."""
+        import json
         try:
             with open(filename, "w", encoding="utf-8") as f:
                 json.dump(self.reviews, f, ensure_ascii=False, indent=2)
@@ -191,7 +191,7 @@ class DataConverter():
         try:
             import csv
             with open(filename, "w", newline='', encoding="utf-8") as f:
-                if self.reviews:  # Kontrola, že reviews nejsou prázdné
+                if self.reviews:
                     writer = csv.writer(f)
                     writer.writerow(self.reviews[0].keys())
                     for review in self.reviews:
@@ -218,10 +218,48 @@ class DataConverter():
         except Exception as e:
             print(f"Error saving XML: {e}")
 
+    def to_excel(self, filename):
+        """Converts JSON file to Excel format."""
+        try:
+            import pandas as pd
+            import json
+            df = pd.DataFrame(self.reviews)[["title", "text", "rating", "reviewer_name", "review_date", "helpful_votes", "negative_votes"]]
+            df.columns = ["Title", "Text", "Rating", "Reviewer Name", "Review Date", "Helpful Votes", "Negative Votes"]
+            df.to_excel(filename, index=False)
+            print(f"JSON data converted to Excel and saved as {filename}")
+        except Exception as e:
+            print(f"Error converting JSON to Excel: {e}")
+
+class DataAnalysis():
+    """Placeholder for future data analysis methods."""
+    def __init__(self, input_data):
+        import pandas as pd
+        import seaborn as sns
+        import matplotlib.pyplot as plt
+
+        self.df = pd.DataFrame(f"{input_data}")
+        print(self.df.head())
+        print(self.df.columns)
+
+        self.reviews = reviews
+
+    def this(self):
+        import seaborn as sns
+        import matplotlib.pyplot as plt  # pro show()
+
+        sns.histplot(self.df["rating"], bins=10, kde=True)
+        plt.title("Rozložení hodnocení")
+        plt.xlabel("Hodnocení")
+        plt.ylabel("Počet")
+        plt.show()
+
+        
+
+
 
 
 if __name__ == "__main__":
-    site = "https://www.imdb.com/title/tt20214908/reviews/?ref_=ttrt_sa_3"
+    site = "https://www.imdb.com/title/tt32299316/reviews/?ref_=ttrt_ov_ql_2"
 
     # Initialize WebDriver
     web_driver = DriverManager()
@@ -249,13 +287,15 @@ if __name__ == "__main__":
             converter.to_json(f"{movie_title}.json")
             converter.to_csv(f"{movie_title}.csv")
             converter.to_xml(f"{movie_title}.xml")
-            print(f"✅ Successfully scraped {len(reviews)} reviews for '{movie_title}'")
+            converter.to_excel(f"{movie_title}.xlsx")
+            print(f"Successfully scraped {len(reviews)} reviews for '{movie_title}'")
         else:
-            print("❌ No reviews found!")
+            print("No reviews found!")
 
     except Exception as e:
-        print(f"❌ Error during scraping: {e}")
+        print(f"Error during scraping: {e}")
     finally:
         scraper.close_driver()
+
 
 

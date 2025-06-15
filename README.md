@@ -24,6 +24,24 @@ The author disclaims any responsibility for misuse of this tool. Users must ensu
 - **Robust Error Handling**: Gracefully handles missing elements and network issues
 - **Clean Architecture**: Modular design with separate classes for driver management, scraping, and data conversion
 
+## TODOs
+- 📁 Data Export
+- [x] Implement Excel (.xlsx) export as an optional output format
+
+📊 Data Analysis
+- [ ] Perform basic analytics (e.g. average rating, vote distributions)
+- [ ] Generate visualizations (e.g. rating histograms, time-series plots)
+
+🧪 Testing & Validation
+- [ ] Add unit tests for scraping and parsing functions
+- [ ] Validate data consistency across different sources
+
+💡 Enhancements
+- [ ] Add CLI argument parsing for flexible input/output
+- [ ] Enable filtering by rating, date, or reviewer
+
+
+
 ## 🚀 Quick Start
 
 ### Prerequisites
@@ -110,6 +128,22 @@ When properly licensed, the scraper generates:
     "negative_votes": "8"
   }
 ]
+```
+
+```xlsx
+  ### 📝 Example Excel Output
+
+  After scraping is complete, the reviews are automatically saved to a `.xlsx` file. You can open it in Excel, Google Sheets, or load it in Python.
+
+  Sample output table:
+
+  | Title               | Text                  | Rating | Reviewer Name | Review Date | Helpful Votes | Negative Votes |
+  |---------------------|-----------------------|--------|----------------|-------------|----------------|-----------------|
+  | Interstellar        | Amazing movie!        | 9      | JohnDoe123     | 2020-11-05  | 24             | 2               |
+  | Blade Runner 2049   | Visually stunning     | 8      | Cinephile_92   | 2019-07-21  | 13             | 1               |
+  | World War Z         | Not bad for a zombie  | 7      | HorrorFan      | 2018-03-18  | 5              | 3               |
+
+  > **Note:** The output file is saved with the movie name, e.g. `Interstellar_reviews.xlsx`.
 ```
 
 ## 🏗️ Architecture
