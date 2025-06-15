@@ -25,7 +25,7 @@ The author disclaims any responsibility for misuse of this tool. Users must ensu
 - **Clean Architecture**: Modular design with separate classes for driver management, scraping, and data conversion
 
 ## TODOs
-- 📁 Data Export
+📁 Data Export
 - [x] Implement Excel (.xlsx) export as an optional output format
 
 📊 Data Analysis
@@ -130,20 +130,12 @@ When properly licensed, the scraper generates:
 ]
 ```
 
-```xlsx
-  ### 📝 Example Excel Output
-
-  After scraping is complete, the reviews are automatically saved to a `.xlsx` file. You can open it in Excel, Google Sheets, or load it in Python.
-
-  Sample output table:
-
-  | Title               | Text                  | Rating | Reviewer Name | Review Date | Helpful Votes | Negative Votes |
+```
+  | Review title        | Text                  | Rating | Reviewer Name  | Review Date | Helpful Votes  | Negative Votes  |
   |---------------------|-----------------------|--------|----------------|-------------|----------------|-----------------|
-  | Interstellar        | Amazing movie!        | 9      | JohnDoe123     | 2020-11-05  | 24             | 2               |
-  | Blade Runner 2049   | Visually stunning     | 8      | Cinephile_92   | 2019-07-21  | 13             | 1               |
-  | World War Z         | Not bad for a zombie  | 7      | HorrorFan      | 2018-03-18  | 5              | 3               |
-
-  > **Note:** The output file is saved with the movie name, e.g. `Interstellar_reviews.xlsx`.
+  | Please, more!       | please please please  | 9      | JohnDoe123     | 2020-11-05  | 24             | 2               |
+  | srsly? no way       | delete it please      | 1      | Cinephile_92   | 2019-07-21  | 13             | 1               |
+  | This is how you die.| Not bad for a zombie  | 7      | HorrorFan      | 2018-03-18  | 5              | 3               |
 ```
 
 ## 🏗️ Architecture
